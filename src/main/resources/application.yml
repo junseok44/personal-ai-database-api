@@ -2,6 +2,9 @@ spring:
   application:
     name: personal-data-ai
 
+auth:
+  api-key: ${AUTH_API_KEY}
+
 notion:
   api-key: ${NOTION_API_KEY}
   database-id: ${NOTION_DATABASE_ID}
