@@ -1,0 +1,13 @@
+services:
+  personal-data-ai:
+    image: eclipse-temurin:17-jdk-jammy
+    working_dir: /app
+    command: sh -c "chmod +x ./gradlew && ./gradlew bootRun"
+    container_name: personal-data-ai
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+    env_file:
+      - .env.local
+    restart: unless-stopped
