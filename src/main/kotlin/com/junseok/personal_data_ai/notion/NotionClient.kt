@@ -4,6 +4,7 @@ import com.junseok.personal_data_ai.config.NotionProperties
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Component
@@ -12,9 +13,10 @@ class NotionClient(
     private val notionProperties: NotionProperties,
 ) {
     private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMdd")
+    private val dayZoneId: ZoneId = ZoneId.of(notionProperties.dayTimeZone)
 
     fun upsertTodayPageAndUpdateProperties(categoryBullets: Map<String, String>): String {
-        val todayTitle = LocalDate.now().format(dateFormatter)
+        val todayTitle = LocalDate.now(dayZoneId).format(dateFormatter)
         val pageId = findTodayPageId(todayTitle) ?: createPage(todayTitle)
         updatePageProperties(pageId, categoryBullets)
         return pageId
