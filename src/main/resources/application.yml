@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: personal-data-ai
+
+notion:
+  api-key: ${NOTION_API_KEY}
+  database-id: ${NOTION_DATABASE_ID}
+  version: ${NOTION_VERSION:2022-06-28}
+  title-property: ${NOTION_TITLE_PROPERTY:Name}
+
+reminder:
+  allowed-categories: ${REMINDER_ALLOWED_CATEGORIES}
