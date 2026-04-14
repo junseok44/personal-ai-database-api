@@ -11,6 +11,7 @@ notion:
   version: ${NOTION_VERSION:2022-06-28}
   title-property: ${NOTION_TITLE_PROPERTY:Name}
   day-time-zone: ${NOTION_DAY_TIME_ZONE:Asia/Seoul}
+  date-property: ${NOTION_DATE_PROPERTY:날짜}
 
 reminder:
   allowed-categories: ${REMINDER_ALLOWED_CATEGORIES}

@@ -16,8 +16,9 @@ class NotionClient(
     private val dayZoneId: ZoneId = ZoneId.of(notionProperties.dayTimeZone)
 
     fun upsertTodayPageAndUpdateProperties(categoryBullets: Map<String, String>): String {
-        val todayTitle = LocalDate.now(dayZoneId).format(dateFormatter)
-        val pageId = findTodayPageId(todayTitle) ?: createPage(todayTitle)
+        val calendarDate = LocalDate.now(dayZoneId)
+        val todayTitle = calendarDate.format(dateFormatter)
+        val pageId = findTodayPageId(todayTitle) ?: createPage(todayTitle, calendarDate)
         updatePageProperties(pageId, categoryBullets)
         return pageId
     }
@@ -45,23 +46,43 @@ class NotionClient(
         return response.results.firstOrNull()?.id?.takeIf { it.isNotBlank() }
     }
 
-    private fun createPage(todayTitle: String): String {
+    private fun createPage(
+        todayTitle: String,
+        calendarDate: LocalDate,
+    ): String {
+        val titleBlock =
+            mapOf(
+                notionProperties.titleProperty to
+                    mapOf(
+                        "title" to
+                            listOf(
+                                mapOf(
+                                    "type" to "text",
+                                    "text" to mapOf("content" to todayTitle),
+                                ),
+                            ),
+                    ),
+            )
+        val dateBlock =
+            if (notionProperties.dateProperty.isNotBlank()) {
+                mapOf(
+                    notionProperties.dateProperty to
+                        mapOf(
+                            "date" to
+                                mapOf(
+                                    "start" to calendarDate.toString(),
+                                ),
+                        ),
+                )
+            } else {
+                emptyMap()
+            }
+        val properties = titleBlock + dateBlock
+
         val requestBody =
             mapOf(
                 "parent" to mapOf("database_id" to notionProperties.databaseId),
-                "properties" to
-                    mapOf(
-                        notionProperties.titleProperty to
-                            mapOf(
-                                "title" to
-                                    listOf(
-                                        mapOf(
-                                            "type" to "text",
-                                            "text" to mapOf("content" to todayTitle),
-                                        ),
-                                    ),
-                            ),
-                    ),
+                "properties" to properties,
             )
 
         val response =
