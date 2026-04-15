@@ -15,11 +15,11 @@ class NotionClient(
     private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMdd")
     private val dayZoneId: ZoneId = ZoneId.of(notionProperties.dayTimeZone)
 
-    fun upsertTodayPageAndUpdateProperties(categoryBullets: Map<String, String>): String {
+    fun upsertTodayPageAndUpdateProperties(categoryContent: Map<String, NotionPagePropertyContent>): String {
         val calendarDate = LocalDate.now(dayZoneId)
         val todayTitle = calendarDate.format(dateFormatter)
         val pageId = findTodayPageId(todayTitle) ?: createPage(todayTitle, calendarDate)
-        updatePageProperties(pageId, categoryBullets)
+        updatePageProperties(pageId, categoryContent)
         return pageId
     }
 
@@ -101,27 +101,19 @@ class NotionClient(
 
     private fun updatePageProperties(
         pageId: String,
-        categoryBullets: Map<String, String>,
+        categoryContent: Map<String, NotionPagePropertyContent>,
     ) {
-
         var allowedColumns = listOf("TIL", "한 일", "회고", "피드백", "내일 할 것", "TIL Shorts")
 
-        var filteredBullets = categoryBullets.filterKeys { it in allowedColumns }
-        
+        var filteredContent = categoryContent.filterKeys { it in allowedColumns }
+
         val properties =
-            filteredBullets.mapValues { (_, bulletText) ->
+            filteredContent.mapValues { (_, content) ->
                 mapOf(
-                    "rich_text" to
-                        listOf(
-                            mapOf(
-                                "type" to "text",
-                                "text" to mapOf("content" to bulletText),
-                            ),
-                        ),
+                    "rich_text" to richTextArray(content),
                 )
             }
 
-        
         val requestBody = mapOf("properties" to properties)
         notionRestClient
             .patch()
@@ -130,6 +122,32 @@ class NotionClient(
             .retrieve()
             .toBodilessEntity()
     }
+
+    private fun richTextArray(content: NotionPagePropertyContent): List<Map<String, Any>> =
+        when (content) {
+            is NotionPagePropertyContent.Plain ->
+                listOf(richTextObject(content.text, "default"))
+            is NotionPagePropertyContent.Rich ->
+                content.parts.map { richTextObject(it.text, it.color) }
+        }
+
+    private fun richTextObject(
+        text: String,
+        color: String,
+    ): Map<String, Any> =
+        mapOf(
+            "type" to "text",
+            "text" to mapOf("content" to text),
+            "annotations" to
+                mapOf(
+                    "bold" to false,
+                    "italic" to false,
+                    "strikethrough" to false,
+                    "underline" to false,
+                    "code" to false,
+                    "color" to color,
+                ),
+        )
 }
 
 private data class NotionQueryResponse(

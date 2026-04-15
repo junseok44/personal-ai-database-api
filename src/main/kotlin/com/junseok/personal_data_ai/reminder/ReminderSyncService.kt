@@ -2,6 +2,7 @@ package com.junseok.personal_data_ai.reminder
 
 import com.junseok.personal_data_ai.config.ReminderProperties
 import com.junseok.personal_data_ai.notion.NotionClient
+import com.junseok.personal_data_ai.notion.NotionPagePropertyContent
 import org.springframework.stereotype.Service
 
 @Service
@@ -18,14 +19,22 @@ class ReminderSyncService(
 
         val groupedByCategory =
             request.reminders
-                .groupBy(
-                    keySelector = { it.category.trim() },
-                    valueTransform = { it.title.trim() },
-                ).mapValues { (_, titles) ->
-                    titles
-                        .filter { it.isNotBlank() }
-                        .joinToString(separator = "\n") { "• $it" }
-                }.filterValues { it.isNotBlank() }
+                .groupBy { it.category.trim() }
+                .mapValues { (category, items) ->
+                    val filtered = items.filter { it.title.trim().isNotBlank() }
+                    if (filtered.isEmpty()) {
+                        NotionPagePropertyContent.Plain("")
+                    } else if (category == "한 일") {
+                        NotionPagePropertyContent.Rich(DoneTodosReminderFormatter.formatRichText(filtered))
+                    } else {
+                        NotionPagePropertyContent.Plain(formatOtherCategories(filtered))
+                    }
+                }.filterValues { content ->
+                    when (content) {
+                        is NotionPagePropertyContent.Plain -> content.text.isNotBlank()
+                        is NotionPagePropertyContent.Rich -> content.parts.isNotEmpty()
+                    }
+                }
                 .filterKeys { category ->
                     allowedCategorySet.isEmpty() || allowedCategorySet.contains(category)
                 }
@@ -37,4 +46,7 @@ class ReminderSyncService(
             reminderCount = request.reminders.size,
         )
     }
+
+    private fun formatOtherCategories(items: List<ReminderItemRequest>): String =
+        items.joinToString(separator = "\n") { item -> "• ${item.title.trim()}" }
 }
