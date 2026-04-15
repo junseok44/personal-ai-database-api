@@ -15,6 +15,8 @@ data class ReminderItemRequest(
     val title: String,
     @field:NotBlank
     val category: String,
+    /** DoneTodos(카테고리명 `한 일`)에서만 사용. 10~50(5단위) 또는 문자열. 비어 있으면 자잘한 일로 처리. */
+    val tag: Any? = null,
 )
 
 data class ReminderSyncResponse(

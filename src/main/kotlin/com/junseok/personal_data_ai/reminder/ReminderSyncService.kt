@@ -18,13 +18,16 @@ class ReminderSyncService(
 
         val groupedByCategory =
             request.reminders
-                .groupBy(
-                    keySelector = { it.category.trim() },
-                    valueTransform = { it.title.trim() },
-                ).mapValues { (_, titles) ->
-                    titles
-                        .filter { it.isNotBlank() }
-                        .joinToString(separator = "\n") { "• $it" }
+                .groupBy { it.category.trim() }
+                .mapValues { (category, items) ->
+                    val filtered = items.filter { it.title.trim().isNotBlank() }
+                    if (filtered.isEmpty()) {
+                        ""
+                    } else if (category == "한 일") {
+                        DoneTodosReminderFormatter.format(filtered)
+                    } else {
+                        formatOtherCategories(filtered)
+                    }
                 }.filterValues { it.isNotBlank() }
                 .filterKeys { category ->
                     allowedCategorySet.isEmpty() || allowedCategorySet.contains(category)
@@ -37,4 +40,7 @@ class ReminderSyncService(
             reminderCount = request.reminders.size,
         )
     }
+
+    private fun formatOtherCategories(items: List<ReminderItemRequest>): String =
+        items.joinToString(separator = "\n") { item -> "• ${item.title.trim()}" }
 }
