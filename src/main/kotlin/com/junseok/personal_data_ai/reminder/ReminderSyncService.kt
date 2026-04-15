@@ -2,6 +2,7 @@ package com.junseok.personal_data_ai.reminder
 
 import com.junseok.personal_data_ai.config.ReminderProperties
 import com.junseok.personal_data_ai.notion.NotionClient
+import com.junseok.personal_data_ai.notion.NotionPagePropertyContent
 import org.springframework.stereotype.Service
 
 @Service
@@ -22,13 +23,18 @@ class ReminderSyncService(
                 .mapValues { (category, items) ->
                     val filtered = items.filter { it.title.trim().isNotBlank() }
                     if (filtered.isEmpty()) {
-                        ""
+                        NotionPagePropertyContent.Plain("")
                     } else if (category == "한 일") {
-                        DoneTodosReminderFormatter.format(filtered)
+                        NotionPagePropertyContent.Rich(DoneTodosReminderFormatter.formatRichText(filtered))
                     } else {
-                        formatOtherCategories(filtered)
+                        NotionPagePropertyContent.Plain(formatOtherCategories(filtered))
                     }
-                }.filterValues { it.isNotBlank() }
+                }.filterValues { content ->
+                    when (content) {
+                        is NotionPagePropertyContent.Plain -> content.text.isNotBlank()
+                        is NotionPagePropertyContent.Rich -> content.parts.isNotEmpty()
+                    }
+                }
                 .filterKeys { category ->
                     allowedCategorySet.isEmpty() || allowedCategorySet.contains(category)
                 }

@@ -1,11 +1,13 @@
 package com.junseok.personal_data_ai.reminder
 
+import com.junseok.personal_data_ai.notion.RichTextPart
+
 internal object DoneTodosReminderFormatter {
     private val VALID_TAG_VALUES = setOf(10, 15, 20, 25, 30, 35, 40, 45, 50)
 
-    fun format(items: List<ReminderItemRequest>): String {
+    fun formatRichText(items: List<ReminderItemRequest>): List<RichTextPart> {
         val miscTitles = mutableListOf<String>()
-        val scoredLines = mutableListOf<String>()
+        val scored = mutableListOf<ScoredLine>()
         for (item in items) {
             val title = item.title.trim()
             if (title.isBlank()) continue
@@ -13,19 +15,40 @@ internal object DoneTodosReminderFormatter {
             if (tagInt == null) {
                 miscTitles.add(title)
             } else {
-                val score = tagInt / 10.0
-                scoredLines.add("• $title (${formatScore(score)}/5)")
+                scored.add(ScoredLine(title, tagInt / 10.0))
             }
         }
-        val miscBlock = miscTitles.joinToString("\n") { "• $it" }
-        val scoredBlock = scoredLines.joinToString("\n")
-        return when {
-            miscBlock.isEmpty() && scoredBlock.isEmpty() -> ""
-            miscBlock.isEmpty() -> scoredBlock
-            scoredBlock.isEmpty() -> miscBlock
-            else -> "$miscBlock\n\n$scoredBlock"
+        val parts = mutableListOf<RichTextPart>()
+        for (i in miscTitles.indices) {
+            parts.add(RichTextPart("• ${miscTitles[i]}"))
+            if (i < miscTitles.lastIndex) {
+                parts.add(RichTextPart("\n"))
+            }
         }
+        if (miscTitles.isNotEmpty() && scored.isNotEmpty()) {
+            parts.add(RichTextPart("\n\n"))
+        }
+        for (i in scored.indices) {
+            val s = scored[i]
+            val line = "• ${s.title} (${formatScore(s.score)}/5)"
+            val color =
+                when {
+                    s.score < 3.0 -> "red"
+                    s.score >= 4.0 -> "blue"
+                    else -> "default"
+                }
+            parts.add(RichTextPart(line, color))
+            if (i < scored.lastIndex) {
+                parts.add(RichTextPart("\n"))
+            }
+        }
+        return mergeAdjacentSameColor(parts)
     }
+
+    private data class ScoredLine(
+        val title: String,
+        val score: Double,
+    )
 
     /**
      * null·빈 값·유효하지 않은 숫자 → 자잘한 일(null).
@@ -55,5 +78,23 @@ internal object DoneTodosReminderFormatter {
         } else {
             "%.1f".format(score)
         }
+    }
+
+    private fun mergeAdjacentSameColor(parts: List<RichTextPart>): List<RichTextPart> {
+        if (parts.isEmpty()) return parts
+        val out = mutableListOf<RichTextPart>()
+        var cur = parts[0]
+        for (i in 1 until parts.size) {
+            val next = parts[i]
+            cur =
+                if (next.color == cur.color) {
+                    RichTextPart(cur.text + next.text, cur.color)
+                } else {
+                    out.add(cur)
+                    next
+                }
+        }
+        out.add(cur)
+        return out
     }
 }
