@@ -1,4 +1,4 @@
-package com.junseok.personal_data_ai.reminder
+package com.junseok.personal_data_ai.reminder.timetable
 
 import com.junseok.personal_data_ai.config.ReminderProperties
 import com.junseok.personal_data_ai.notion.NotionPagePropertyContent
@@ -6,16 +6,16 @@ import com.junseok.personal_data_ai.notion.TimetableNotionService
 import org.springframework.stereotype.Service
 
 @Service
-class ReminderSyncService(
+class TimetableSyncService(
     private val timetableNotionService: TimetableNotionService,
     private val reminderProperties: ReminderProperties,
 ) {
-    fun sync(request: ReminderSyncRequest): ReminderSyncResponse {
+    fun sync(request: TimetableSyncRequest): TimetableSyncResponse {
         val allowedCategorySet =
             reminderProperties.allowedCategories
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
-                .toSet()    
+                .toSet()
 
         val groupedByCategory =
             request.reminders
@@ -40,13 +40,14 @@ class ReminderSyncService(
                 }
 
         val pageId = timetableNotionService.upsertTodayAndUpdateProperties(groupedByCategory)
-        return ReminderSyncResponse(
+        return TimetableSyncResponse(
             pageId = pageId,
             categoryCount = groupedByCategory.size,
             reminderCount = request.reminders.size,
         )
     }
 
-    private fun formatOtherCategories(items: List<ReminderItemRequest>): String =
+    private fun formatOtherCategories(items: List<TimetableItemRequest>): String =
         items.joinToString(separator = "\n") { item -> "• ${item.title.trim()}" }
 }
+

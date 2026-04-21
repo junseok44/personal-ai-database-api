@@ -1,16 +1,16 @@
-package com.junseok.personal_data_ai.reminder
+package com.junseok.personal_data_ai.reminder.timetable
 
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotEmpty
 
-data class ReminderSyncRequest(
+data class TimetableSyncRequest(
     @field:Valid
     @field:NotEmpty
-    val reminders: List<ReminderItemRequest>,
+    val reminders: List<TimetableItemRequest>,
 )
 
-data class ReminderItemRequest(
+data class TimetableItemRequest(
     @field:NotBlank
     val title: String,
     @field:NotBlank
@@ -19,8 +19,9 @@ data class ReminderItemRequest(
     val tag: Any? = null,
 )
 
-data class ReminderSyncResponse(
+data class TimetableSyncResponse(
     val pageId: String,
     val categoryCount: Int,
     val reminderCount: Int,
 )
+

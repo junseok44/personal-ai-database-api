@@ -1,11 +1,11 @@
-package com.junseok.personal_data_ai.reminder
+package com.junseok.personal_data_ai.reminder.timetable
 
 import com.junseok.personal_data_ai.notion.RichTextPart
 
 internal object DoneTodosReminderFormatter {
     private val VALID_TAG_VALUES = setOf(10, 15, 20, 25, 30, 35, 40, 45, 50)
 
-    fun formatRichText(items: List<ReminderItemRequest>): List<RichTextPart> {
+    fun formatRichText(items: List<TimetableItemRequest>): List<RichTextPart> {
         val miscTitles = mutableListOf<String>()
         val scored = mutableListOf<ScoredLine>()
         for (item in items) {
@@ -50,10 +50,6 @@ internal object DoneTodosReminderFormatter {
         val score: Double,
     )
 
-    /**
-     * null·빈 값·유효하지 않은 숫자 → 자잘한 일(null).
-     * 10~50 범위가 아니거나 5단위가 아니면 자잘한 일로 취급(제목만 상단 불렛).
-     */
     private fun parseTagInt(tag: Any?): Int? {
         val raw = tagToRawString(tag) ?: return null
         val digits = raw.filter { it.isDigit() }
@@ -98,3 +94,4 @@ internal object DoneTodosReminderFormatter {
         return out
     }
 }
+
