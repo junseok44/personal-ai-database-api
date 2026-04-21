@@ -1,13 +1,13 @@
 package com.junseok.personal_data_ai.reminder
 
 import com.junseok.personal_data_ai.config.ReminderProperties
-import com.junseok.personal_data_ai.notion.NotionClient
 import com.junseok.personal_data_ai.notion.NotionPagePropertyContent
+import com.junseok.personal_data_ai.notion.TimetableNotionService
 import org.springframework.stereotype.Service
 
 @Service
 class ReminderSyncService(
-    private val notionClient: NotionClient,
+    private val timetableNotionService: TimetableNotionService,
     private val reminderProperties: ReminderProperties,
 ) {
     fun sync(request: ReminderSyncRequest): ReminderSyncResponse {
@@ -39,7 +39,7 @@ class ReminderSyncService(
                     allowedCategorySet.isEmpty() || allowedCategorySet.contains(category)
                 }
 
-        val pageId = notionClient.upsertTodayPageAndUpdateProperties(groupedByCategory)
+        val pageId = timetableNotionService.upsertTodayAndUpdateProperties(groupedByCategory)
         return ReminderSyncResponse(
             pageId = pageId,
             categoryCount = groupedByCategory.size,
