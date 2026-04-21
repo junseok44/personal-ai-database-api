@@ -5,7 +5,16 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 @ConfigurationProperties(prefix = "notion")
 data class NotionProperties(
     val apiKey: String,
-    val databaseId: String,
+    /**
+     * 레거시 기본 DB. (가능하면 사용하지 말고 아래의 목적별 DB id를 사용)
+     * 기존 설정 호환을 위해 남겨둔다.
+     */
+    /** 레거시 기본 DB. (호환을 위해 남김) */
+    val timetableDatabaseId: String = "",
+    val tilDatabaseId: String,
+    val conditionDatabaseId: String,
+    val nutritionDatabaseId: String,
+    val foodDatabaseId: String,
     val version: String = "2022-06-28",
     val titleProperty: String = "Name",
     /** 일일 페이지 제목(MMdd) 기준 날짜를 잡을 때 사용 (예: Asia/Seoul). JVM 기본 타임존과 무관하게 고정 가능. */
