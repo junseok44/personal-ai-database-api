@@ -47,6 +47,35 @@ class TimetableSyncService(
         )
     }
 
+    fun appendThinking(request: TimetableThinkingAppendRequest): TimetableThinkingAppendResponse {
+        val groupedByKey = linkedMapOf<String, MutableList<String>>()
+        var noTagIndex = 0
+        for (item in request.thinking) {
+            val title = item.title.trim()
+            if (title.isBlank()) continue
+
+            val tag = item.tag?.trim().orEmpty()
+            val key =
+                if (tag.isBlank()) {
+                    // 태그가 없으면 묶지 않고 각각 독립 불렛(=독립 그룹)로 처리
+                    "__NO_TAG__#${noTagIndex++}"
+                } else {
+                    tag
+                }
+
+            groupedByKey.getOrPut(key) { mutableListOf() }.add(title)
+        }
+
+        val groupedThinking = groupedByKey.values.map { it.toList() }
+        val result = timetableNotionService.upsertTodayAndOverwriteThinkingBlocks(groupedThinking)
+        return TimetableThinkingAppendResponse(
+            pageId = result.pageId,
+            tagCount = groupedByKey.keys.count { !it.startsWith("__NO_TAG__#") },
+            appendedTopLevelBulletCount = result.appendedTopLevelBulletCount,
+            thinkingCount = request.thinking.size,
+        )
+    }
+
     private fun formatOtherCategories(items: List<TimetableItemRequest>): String =
         items.joinToString(separator = "\n") { item -> "• ${item.title.trim()}" }
 }
