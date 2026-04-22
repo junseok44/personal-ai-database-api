@@ -16,5 +16,11 @@ class TimetableController(
     fun syncTimetableReminders(
         @Valid @RequestBody request: TimetableSyncRequest,
     ): ResponseEntity<TimetableSyncResponse> = ResponseEntity.ok(timetableSyncService.sync(request))
+
+    @PostMapping("/thinking")
+    fun appendThinking(
+        @Valid @RequestBody request: TimetableThinkingAppendRequest,
+    ): ResponseEntity<TimetableThinkingAppendResponse> =
+        ResponseEntity.ok(timetableSyncService.appendThinking(request))
 }
 

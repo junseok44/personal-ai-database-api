@@ -29,6 +29,18 @@ class TimetableNotionService(
         return pageId
     }
 
+    fun upsertTodayAndAppendThinkingBullets(groupedThinking: List<List<String>>): TimetableThinkingAppendResult {
+        val pageId = findOrCreateTodayPage()
+        val blocks = buildThinkingBulletedBlocks(groupedThinking)
+        if (blocks.isNotEmpty()) {
+            notionApiClient.appendBlockChildren(pageId, blocks)
+        }
+        return TimetableThinkingAppendResult(
+            pageId = pageId,
+            appendedTopLevelBulletCount = groupedThinking.count { it.isNotEmpty() },
+        )
+    }
+
     private fun findOrCreateTodayPage(): String {
         val zoneId = ZoneId.of(notionProperties.dayTimeZone)
         val calendarDate = LocalDate.now(zoneId)
@@ -99,5 +111,58 @@ class TimetableNotionService(
                     "color" to color,
                 ),
         )
+
+    private fun buildThinkingBulletedBlocks(groupedThinking: List<List<String>>): List<Map<String, Any>> {
+        val blocks = mutableListOf<Map<String, Any>>()
+        for (group in groupedThinking) {
+            if (group.isEmpty()) continue
+            val first = group.first().trim()
+            if (first.isBlank()) continue
+
+            val children =
+                group.drop(1)
+                    .mapNotNull { it.trim().takeIf { t -> t.isNotBlank() } }
+                    .map { createBulletedBlock(it) }
+
+            blocks.add(
+                if (children.isEmpty()) {
+                    createBulletedBlock(first)
+                } else {
+                    createBulletedBlock(first, children)
+                },
+            )
+        }
+        return blocks
+    }
+
+    private fun createBulletedBlock(
+        text: String,
+        children: List<Map<String, Any>> = emptyList(),
+    ): Map<String, Any> =
+        mapOf(
+            "object" to "block",
+            "type" to "bulleted_list_item",
+            "bulleted_list_item" to
+                buildMap<String, Any> {
+                    put(
+                        "rich_text",
+                        listOf(
+                            mapOf(
+                                "type" to "text",
+                                "text" to mapOf("content" to text),
+                            ),
+                        ),
+                    )
+                    if (children.isNotEmpty()) {
+                        put("children", children)
+                    }
+                },
+        )
 }
+
+data class TimetableThinkingAppendResult(
+    val pageId: String,
+    val appendedTopLevelBulletCount: Int,
+)
+
 
