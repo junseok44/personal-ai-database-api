@@ -67,7 +67,7 @@ class TimetableSyncService(
         }
 
         val groupedThinking = groupedByKey.values.map { it.toList() }
-        val result = timetableNotionService.upsertTodayAndOverwriteThinkingBlocks(groupedThinking)
+        val result = timetableNotionService.upsertTodayAndAppendThinkingBullets(groupedThinking)
         return TimetableThinkingAppendResponse(
             pageId = result.pageId,
             tagCount = groupedByKey.keys.count { !it.startsWith("__NO_TAG__#") },

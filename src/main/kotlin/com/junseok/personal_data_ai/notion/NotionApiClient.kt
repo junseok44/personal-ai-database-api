@@ -79,15 +79,6 @@ class NotionApiClient(
             .toBodilessEntity()
     }
 
-    fun archiveBlock(blockId: String) {
-        notionRestClient
-            .patch()
-            .uri("/blocks/{blockId}", blockId)
-            .body(mapOf("archived" to true))
-            .retrieve()
-            .toBodilessEntity()
-    }
-
     fun fetchAllBlockChildren(blockId: String): List<NotionBlock> {
         val all = mutableListOf<NotionBlock>()
         var nextCursor: String? = null

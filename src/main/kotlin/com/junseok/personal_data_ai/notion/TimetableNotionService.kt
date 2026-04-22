@@ -29,31 +29,16 @@ class TimetableNotionService(
         return pageId
     }
 
-    fun upsertTodayAndOverwriteThinkingBlocks(groupedThinking: List<List<String>>): TimetableThinkingAppendResult {
+    fun upsertTodayAndAppendThinkingBullets(groupedThinking: List<List<String>>): TimetableThinkingAppendResult {
         val pageId = findOrCreateTodayPage()
-        overwritePageContentBlocks(
-            pageId = pageId,
-            newBlocks = buildThinkingBulletedBlocks(groupedThinking),
-        )
+        val blocks = buildThinkingBulletedBlocks(groupedThinking)
+        if (blocks.isNotEmpty()) {
+            notionApiClient.appendBlockChildren(pageId, blocks)
+        }
         return TimetableThinkingAppendResult(
             pageId = pageId,
             appendedTopLevelBulletCount = groupedThinking.count { it.isNotEmpty() },
         )
-    }
-
-    private fun overwritePageContentBlocks(
-        pageId: String,
-        newBlocks: List<Map<String, Any>>,
-    ) {
-        val existing = notionApiClient.fetchAllBlockChildren(pageId)
-        for (block in existing) {
-            val id = block.id.trim()
-            if (id.isBlank()) continue
-            notionApiClient.archiveBlock(id)
-        }
-        if (newBlocks.isNotEmpty()) {
-            notionApiClient.appendBlockChildren(pageId, newBlocks)
-        }
     }
 
     private fun findOrCreateTodayPage(): String {
@@ -173,7 +158,6 @@ class TimetableNotionService(
                     }
                 },
         )
-
 }
 
 data class TimetableThinkingAppendResult(
