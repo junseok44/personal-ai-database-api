@@ -67,6 +67,15 @@ class NotionApiClient(
             .toBodilessEntity()
     }
 
+    fun archivePage(pageId: String) {
+        notionRestClient
+            .patch()
+            .uri("/pages/{pageId}", pageId)
+            .body(mapOf("archived" to true))
+            .retrieve()
+            .toBodilessEntity()
+    }
+
     fun appendBlockChildren(
         blockId: String,
         children: List<Map<String, Any>>,
