@@ -1,6 +1,7 @@
 package com.junseok.personal_data_ai.notion
 
 import com.junseok.personal_data_ai.config.NotionProperties
+import com.junseok.personal_data_ai.notion.daily.DailyPageUpsertHelper
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.ZoneId
@@ -10,6 +11,7 @@ import java.time.format.DateTimeFormatter
 class TimetableNotionService(
     private val notionApiClient: NotionApiClient,
     private val notionProperties: NotionProperties,
+    private val dailyPageUpsertHelper: DailyPageUpsertHelper,
 ) {
     private val titleFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMdd")
 
@@ -45,44 +47,11 @@ class TimetableNotionService(
         val zoneId = ZoneId.of(notionProperties.dayTimeZone)
         val calendarDate = LocalDate.now(zoneId)
         val todayTitle = calendarDate.format(titleFormatter)
-        return notionApiClient.queryDatabaseByTitleEquals(
+        val dateStart = if (notionProperties.dateProperty.isNotBlank()) calendarDate.toString() else null
+        return dailyPageUpsertHelper.findOrCreatePage(
             databaseId = notionProperties.timetableDatabaseId,
-            titleProperty = notionProperties.titleProperty,
-            titleEquals = todayTitle,
-        ) ?: createTodayPage(todayTitle, calendarDate)
-    }
-
-    private fun createTodayPage(
-        todayTitle: String,
-        calendarDate: LocalDate,
-    ): String {
-        val titleBlock =
-            mapOf(
-                notionProperties.titleProperty to
-                    mapOf(
-                        "title" to
-                            listOf(
-                                mapOf(
-                                    "type" to "text",
-                                    "text" to mapOf("content" to todayTitle),
-                                ),
-                            ),
-                    ),
-            )
-        val dateBlock =
-            if (notionProperties.dateProperty.isNotBlank()) {
-                mapOf(
-                    notionProperties.dateProperty to
-                        mapOf(
-                            "date" to mapOf("start" to calendarDate.toString()),
-                        ),
-                )
-            } else {
-                emptyMap()
-            }
-        return notionApiClient.createPage(
-            databaseId = notionProperties.timetableDatabaseId,
-            properties = titleBlock + dateBlock,
+            title = todayTitle,
+            dateStart = dateStart,
         )
     }
 
