@@ -88,6 +88,31 @@ class NotionApiClient(
             .toBodilessEntity()
     }
 
+    fun updateBulletedListItemText(
+        blockId: String,
+        text: String,
+    ) {
+        val requestBody =
+            mapOf(
+                "bulleted_list_item" to
+                    mapOf(
+                        "rich_text" to
+                            listOf(
+                                mapOf(
+                                    "type" to "text",
+                                    "text" to mapOf("content" to text),
+                                ),
+                            ),
+                    ),
+            )
+        notionRestClient
+            .patch()
+            .uri("/blocks/{blockId}", blockId)
+            .body(requestBody)
+            .retrieve()
+            .toBodilessEntity()
+    }
+
     fun fetchAllBlockChildren(blockId: String): List<NotionBlock> {
         val all = mutableListOf<NotionBlock>()
         var nextCursor: String? = null
