@@ -1,14 +1,17 @@
 package com.junseok.personal_data_ai.reminder.timetable
 
 import com.junseok.personal_data_ai.config.ReminderProperties
+import com.junseok.personal_data_ai.llm.AiGenerateService
+import com.junseok.personal_data_ai.notion.TimetableThinkingGroup
 import com.junseok.personal_data_ai.notion.NotionPagePropertyContent
 import com.junseok.personal_data_ai.notion.TimetableNotionService
 import org.springframework.stereotype.Service
 
 @Service
-class TimetableSyncService(
+class TimetableService(
     private val timetableNotionService: TimetableNotionService,
     private val reminderProperties: ReminderProperties,
+    private val aiGenerateService: AiGenerateService,
 ) {
     fun sync(request: TimetableSyncRequest): TimetableSyncResponse {
         val allowedCategorySet =
@@ -48,26 +51,50 @@ class TimetableSyncService(
     }
 
     fun appendThinking(request: TimetableThinkingAppendRequest): TimetableThinkingAppendResponse {
-        val groupedByKey = linkedMapOf<String, MutableList<String>>()
+        val groupedByKey = linkedMapOf<String, TimetableThinkingGroupBuilder>()
         var noTagIndex = 0
         for (item in request.thinking) {
             val title = item.title.trim()
             if (title.isBlank()) continue
 
-            val tag = item.tag?.trim().orEmpty()
+            val tags = item.tags.map { it.trim() }.filter { it.isNotBlank() }
+            val hasAiTag = tags.any { it.equals("a", ignoreCase = true) }
+            val groupingTags = tags.filterNot { it.equals("a", ignoreCase = true) }.sorted()
             val key =
-                if (tag.isBlank()) {
+                if (groupingTags.isEmpty()) {
                     // 태그가 없으면 묶지 않고 각각 독립 불렛(=독립 그룹)로 처리
                     "__NO_TAG__#${noTagIndex++}"
                 } else {
-                    tag
+                    groupingTags.joinToString(separator = ",")
                 }
 
-            groupedByKey.getOrPut(key) { mutableListOf() }.add(title)
+            val builder = groupedByKey.getOrPut(key) { TimetableThinkingGroupBuilder() }
+            builder.items.add(title)
+            builder.hasAiTag = builder.hasAiTag || hasAiTag
         }
 
-        val groupedThinking = groupedByKey.values.map { it.toList() }
-        val result = timetableNotionService.upsertTodayAndAppendThinkingBullets(groupedThinking)
+        val groups =
+            groupedByKey.values
+                .mapNotNull { builder ->
+                    val items = builder.items.map { it.trim() }.filter { it.isNotBlank() }
+                    if (items.isEmpty()) return@mapNotNull null
+
+                    if (!builder.hasAiTag) {
+                        TimetableThinkingGroup(
+                            title = items.first(),
+                            children = items.drop(1),
+                        )
+                    } else {
+                        val aiText = aiGenerateService.generateText(prompt = buildAiPrompt(items))
+                        TimetableThinkingGroup(
+                            title = items.first(),
+                            children = items.drop(1),
+                            aiFeedback = aiText,
+                        )
+                    }
+                }
+
+        val result = timetableNotionService.upsertTodayAndAppendThinking(groups)
         return TimetableThinkingAppendResponse(
             pageId = result.pageId,
             tagCount = groupedByKey.keys.count { !it.startsWith("__NO_TAG__#") },
@@ -78,5 +105,21 @@ class TimetableSyncService(
 
     private fun formatOtherCategories(items: List<TimetableItemRequest>): String =
         items.joinToString(separator = "\n") { item -> "• ${item.title.trim()}" }
+}
+
+private data class TimetableThinkingGroupBuilder(
+    val items: MutableList<String> = mutableListOf(),
+    var hasAiTag: Boolean = false,
+)
+
+private fun buildAiPrompt(items: List<String>): String {
+    val lines = items.map { it.trim() }.filter { it.isNotBlank() }
+    return buildString {
+        appendLine("다음은 사용자의 생각 목록입니다. 듣고 조언을 해줘.")
+        appendLine()
+        for (line in lines) {
+            appendLine("- $line")
+        }
+    }.trim()
 }
 

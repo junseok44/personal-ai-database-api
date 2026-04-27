@@ -10,17 +10,17 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/timetable")
 class TimetableController(
-    private val timetableSyncService: TimetableSyncService,
+    private val timetableService: TimetableService,
 ) {
     @PostMapping("/reminders")
     fun syncTimetableReminders(
         @Valid @RequestBody request: TimetableSyncRequest,
-    ): ResponseEntity<TimetableSyncResponse> = ResponseEntity.ok(timetableSyncService.sync(request))
+    ): ResponseEntity<TimetableSyncResponse> = ResponseEntity.ok(timetableService.sync(request))
 
     @PostMapping("/thinking")
     fun appendThinking(
         @Valid @RequestBody request: TimetableThinkingAppendRequest,
     ): ResponseEntity<TimetableThinkingAppendResponse> =
-        ResponseEntity.ok(timetableSyncService.appendThinking(request))
+        ResponseEntity.ok(timetableService.appendThinking(request))
 }
 
