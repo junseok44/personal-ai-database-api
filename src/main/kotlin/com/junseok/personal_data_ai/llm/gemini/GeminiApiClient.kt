@@ -1,4 +1,4 @@
-package com.junseok.personal_data_ai.gemini
+package com.junseok.personal_data_ai.llm.gemini
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.junseok.personal_data_ai.config.GeminiProperties
@@ -65,3 +65,4 @@ private data class GeminiContent(
 private data class GeminiPart(
     val text: String = "",
 )
+
