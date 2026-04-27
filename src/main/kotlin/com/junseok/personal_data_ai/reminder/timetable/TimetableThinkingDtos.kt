@@ -14,7 +14,7 @@ data class TimetableThinkingItemRequest(
     @field:NotBlank
     val title: String,
     // @field:NotBlank
-    val tag: String? = null,
+    val tags: List<String> = emptyList(),
 )
 
 data class TimetableThinkingAppendResponse(
