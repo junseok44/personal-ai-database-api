@@ -35,12 +35,34 @@ class TimetableNotionService(
     fun upsertTodayAndAppendThinking(groupedThinking: List<TimetableThinkingGroup>): TimetableThinkingAppendResult {
         val pageId = findOrCreateTodayPage()
         val blocks = buildThinkingBlocks(groupedThinking)
-        if (blocks.isNotEmpty()) {
-            notionApiClient.appendBlockChildren(pageId, blocks)
-        }
+        val appendedBlockIds =
+            if (blocks.isNotEmpty()) {
+                notionApiClient.appendBlockChildren(pageId, blocks).map { it.id }.filter { it.isNotBlank() }
+            } else {
+                emptyList()
+            }
         return TimetableThinkingAppendResult(
             pageId = pageId,
             appendedTopLevelBulletCount = groupedThinking.size,
+            appendedTopLevelBlockIds = appendedBlockIds,
+        )
+    }
+
+    fun appendAiFeedbackToThinkingBlock(
+        blockId: String,
+        feedback: String,
+    ) {
+        val trimmed = feedback.trim()
+        if (blockId.isBlank() || trimmed.isBlank()) return
+
+        notionApiClient.appendBlockChildren(
+            blockId,
+            listOf(
+                notionBlockContentFactory.createToggleBlock(
+                    "AI의 피드백",
+                    children = listOf(notionBlockContentFactory.createParagraphBlock(trimmed)),
+                ),
+            ),
         )
     }
 
@@ -88,6 +110,7 @@ class TimetableNotionService(
 data class TimetableThinkingAppendResult(
     val pageId: String,
     val appendedTopLevelBulletCount: Int,
+    val appendedTopLevelBlockIds: List<String> = emptyList(),
 )
 
 

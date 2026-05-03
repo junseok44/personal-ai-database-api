@@ -13,10 +13,12 @@ import org.mockito.ArgumentCaptor
 import org.mockito.Mockito
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
+import org.springframework.core.task.SyncTaskExecutor
 
 class TimetableServiceTest {
     private val timetableNotionService: TimetableNotionService = Mockito.mock(TimetableNotionService::class.java)
-    private val aiGenerateService: AiGenerateService = Mockito.mock(AiGenerateService::class.java)
+    private val timetableThinkingAiFeedbackService: TimetableThinkingAiFeedbackService =
+        Mockito.mock(TimetableThinkingAiFeedbackService::class.java)
 
     @Test
     fun `sync는 허용 카테고리만 노션 프로퍼티로 반영한다`() {
@@ -24,7 +26,7 @@ class TimetableServiceTest {
             TimetableService(
                 timetableNotionService = timetableNotionService,
                 reminderProperties = ReminderProperties(allowedCategories = listOf("계획", "한 일")),
-                aiGenerateService = aiGenerateService,
+                timetableThinkingAiFeedbackService = timetableThinkingAiFeedbackService,
             )
         Mockito.`when`(timetableNotionService.upsertTodayAndUpdateProperties(Mockito.anyMap())).thenReturn("page-1")
 
@@ -61,18 +63,18 @@ class TimetableServiceTest {
     }
 
     @Test
-    fun `appendThinking은 태그 기준으로 그룹핑하고 a 태그 그룹에만 AI 피드백을 붙인다`() {
+    fun `appendThinking은 태그 기준으로 그룹핑해 먼저 노션에 저장하고 AI 피드백은 비동기로 요청한다`() {
         val service =
             TimetableService(
                 timetableNotionService = timetableNotionService,
                 reminderProperties = ReminderProperties(),
-                aiGenerateService = aiGenerateService,
+                timetableThinkingAiFeedbackService = timetableThinkingAiFeedbackService,
             )
-        Mockito.`when`(aiGenerateService.generateText(Mockito.anyString(), Mockito.isNull())).thenReturn("AI 피드백")
         Mockito.`when`(timetableNotionService.upsertTodayAndAppendThinking(Mockito.anyList())).thenReturn(
             TimetableThinkingAppendResult(
                 pageId = "page-2",
                 appendedTopLevelBulletCount = 3,
+                appendedTopLevelBlockIds = listOf("block-1", "block-2", "block-3"),
             ),
         )
 
@@ -81,7 +83,7 @@ class TimetableServiceTest {
                 TimetableThinkingAppendRequest(
                     thinking =
                         listOf(
-                            TimetableThinkingItemRequest(title = "첫 생각", tags = listOf("work", "a")),
+                            TimetableThinkingItemRequest(title = "첫 생각", tags = listOf("work")),
                             TimetableThinkingItemRequest(title = "같은 그룹 자식", tags = listOf("work")),
                             TimetableThinkingItemRequest(title = "무태그 1", tags = emptyList()),
                             TimetableThinkingItemRequest(title = "무태그 2", tags = emptyList()),
@@ -92,21 +94,51 @@ class TimetableServiceTest {
         @Suppress("UNCHECKED_CAST")
         val captor = ArgumentCaptor.forClass(List::class.java) as ArgumentCaptor<List<TimetableThinkingGroup>>
         verify(timetableNotionService).upsertTodayAndAppendThinking(captor.capture() ?: emptyList())
-        verify(aiGenerateService, times(1)).generateText(Mockito.anyString(), Mockito.isNull())
 
         val groups = captor.value
         assertEquals(3, groups.size)
         assertEquals("첫 생각", groups[0].title)
         assertEquals(listOf("같은 그룹 자식"), groups[0].children)
-        assertEquals("AI 피드백", groups[0].aiFeedback)
+        assertEquals(null, groups[0].aiFeedback)
         assertEquals("무태그 1", groups[1].title)
         assertEquals(null, groups[1].aiFeedback)
         assertEquals("무태그 2", groups[2].title)
         assertEquals(null, groups[2].aiFeedback)
+        verify(timetableThinkingAiFeedbackService).appendFeedbackAsync(
+            groups,
+            listOf("block-1", "block-2", "block-3"),
+        )
 
         assertEquals("page-2", response.pageId)
         assertEquals(1, response.tagCount)
         assertEquals(3, response.appendedTopLevelBulletCount)
         assertEquals(4, response.thinkingCount)
+    }
+
+    @Test
+    fun `TimetableThinkingAiFeedbackService는 각 그룹 피드백을 생성해 대응 블록에 붙인다`() {
+        val aiGenerateService: AiGenerateService = Mockito.mock(AiGenerateService::class.java)
+        val notionService: TimetableNotionService = Mockito.mock(TimetableNotionService::class.java)
+        val service =
+            TimetableThinkingAiFeedbackService(
+                aiGenerateService = aiGenerateService,
+                timetableNotionService = notionService,
+                taskExecutor = SyncTaskExecutor(),
+            )
+        Mockito.`when`(aiGenerateService.generateText(Mockito.anyString(), Mockito.isNull()))
+            .thenReturn("피드백 1", "피드백 2")
+
+        service.appendFeedbackAsync(
+            groups =
+                listOf(
+                    TimetableThinkingGroup(title = "첫 생각", children = listOf("자식")),
+                    TimetableThinkingGroup(title = "둘째 생각", children = emptyList()),
+                ),
+            blockIds = listOf("block-1", "block-2"),
+        )
+
+        verify(aiGenerateService, times(2)).generateText(Mockito.anyString(), Mockito.isNull())
+        verify(notionService).appendAiFeedbackToThinkingBlock("block-1", "피드백 1")
+        verify(notionService).appendAiFeedbackToThinkingBlock("block-2", "피드백 2")
     }
 }
