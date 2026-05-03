@@ -79,13 +79,16 @@ class NotionApiClient(
     fun appendBlockChildren(
         blockId: String,
         children: List<Map<String, Any>>,
-    ) {
-        notionRestClient
+    ): List<NotionBlock> {
+        val response =
+            notionRestClient
             .patch()
             .uri("/blocks/{blockId}/children", blockId)
             .body(mapOf("children" to children))
             .retrieve()
-            .toBodilessEntity()
+            .body(NotionBlockChildrenResponse::class.java)
+            ?: throw IllegalStateException("Notion block append failed: empty response")
+        return response.results
     }
 
     fun updateBulletedListItemText(
