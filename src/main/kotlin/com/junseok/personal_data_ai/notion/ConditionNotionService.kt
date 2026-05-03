@@ -12,6 +12,7 @@ class ConditionNotionService(
     private val notionApiClient: NotionApiClient,
     private val notionProperties: NotionProperties,
     private val dailyPageUpsertHelper: DailyPageUpsertHelper,
+    private val notionBlockContentFactory: NotionBlockContentFactory,
 ) {
     private val titleFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMdd")
 
@@ -91,7 +92,7 @@ class ConditionNotionService(
             val toAppend = requestedTexts.filter { it !in existingChildTexts }
             if (toAppend.isNotEmpty()) {
                 mergedCount += toAppend.size
-                notionApiClient.appendBlockChildren(existing.blockId, toAppend.map { createBulletedBlock(it) })
+                notionApiClient.appendBlockChildren(existing.blockId, toAppend.map { notionBlockContentFactory.createBulletedBlock(it) })
             }
         }
 
@@ -103,9 +104,9 @@ class ConditionNotionService(
             mergedCount += requestedTexts.size
             val headerText = buildHeaderText(time, requestedTagByTime[time])
             newHeaderBlocks.add(
-                createBulletedBlock(
+                notionBlockContentFactory.createBulletedBlock(
                     headerText,
-                    children = requestedTexts.map { createBulletedBlock(it) },
+                    children = requestedTexts.map { notionBlockContentFactory.createBulletedBlock(it) },
                 ),
             )
         }
@@ -115,30 +116,6 @@ class ConditionNotionService(
 
         return mergedCount
     }
-
-    private fun createBulletedBlock(
-        text: String,
-        children: List<Map<String, Any>> = emptyList(),
-    ): Map<String, Any> =
-        mapOf(
-            "object" to "block",
-            "type" to "bulleted_list_item",
-            "bulleted_list_item" to
-                buildMap<String, Any> {
-                    put(
-                        "rich_text",
-                        listOf(
-                            mapOf(
-                                "type" to "text",
-                                "text" to mapOf("content" to text),
-                            ),
-                        ),
-                    )
-                    if (children.isNotEmpty()) {
-                        put("children", children)
-                    }
-                },
-        )
 
     private fun NotionBulletedListItem?.toPlainText(): String =
         this?.rich_text?.joinToString("") { it.plain_text } ?: ""

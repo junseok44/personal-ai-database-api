@@ -12,6 +12,7 @@ class TimetableNotionService(
     private val notionApiClient: NotionApiClient,
     private val notionProperties: NotionProperties,
     private val dailyPageUpsertHelper: DailyPageUpsertHelper,
+    private val notionBlockContentFactory: NotionBlockContentFactory,
 ) {
     private val titleFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMdd")
 
@@ -21,7 +22,7 @@ class TimetableNotionService(
         val properties =
             categoryContent.mapValues { (_, content) ->
                 mapOf(
-                    "rich_text" to richTextArray(content),
+                    "rich_text" to notionBlockContentFactory.propertyRichTextArray(content),
                 )
             }
 
@@ -55,32 +56,6 @@ class TimetableNotionService(
         )
     }
 
-    private fun richTextArray(content: NotionPagePropertyContent): List<Map<String, Any>> =
-        when (content) {
-            is NotionPagePropertyContent.Plain ->
-                listOf(richTextObject(content.text, "default"))
-            is NotionPagePropertyContent.Rich ->
-                content.parts.map { richTextObject(it.text, it.color) }
-        }
-
-    private fun richTextObject(
-        text: String,
-        color: String,
-    ): Map<String, Any> =
-        mapOf(
-            "type" to "text",
-            "text" to mapOf("content" to text),
-            "annotations" to
-                mapOf(
-                    "bold" to false,
-                    "italic" to false,
-                    "strikethrough" to false,
-                    "underline" to false,
-                    "code" to false,
-                    "color" to color,
-                ),
-        )
-
     private fun buildThinkingBlocks(groupedThinking: List<TimetableThinkingGroup>): List<Map<String, Any>> {
         val blocks = mutableListOf<Map<String, Any>>()
         for (group in groupedThinking) {
@@ -91,87 +66,23 @@ class TimetableNotionService(
             children.addAll(
                 group.children
                     .mapNotNull { it.trim().takeIf { t -> t.isNotBlank() } }
-                    .map { createBulletedBlock(it) },
+                    .map { notionBlockContentFactory.createBulletedBlock(it) },
             )
 
             val feedback = group.aiFeedback?.trim().orEmpty()
             if (feedback.isNotBlank()) {
                 children.add(
-                    createToggleBlock(
+                    notionBlockContentFactory.createToggleBlock(
                         "AI의 피드백",
-                        children = listOf(createParagraphBlock(feedback)),
+                        children = listOf(notionBlockContentFactory.createParagraphBlock(feedback)),
                     ),
                 )
             }
 
-            blocks.add(createBulletedBlock(first, children))
+            blocks.add(notionBlockContentFactory.createBulletedBlock(first, children))
         }
         return blocks
     }
-
-    private fun createBulletedBlock(
-        text: String,
-        children: List<Map<String, Any>> = emptyList(),
-    ): Map<String, Any> =
-        mapOf(
-            "object" to "block",
-            "type" to "bulleted_list_item",
-            "bulleted_list_item" to
-                buildMap<String, Any> {
-                    put(
-                        "rich_text",
-                        listOf(
-                            mapOf(
-                                "type" to "text",
-                                "text" to mapOf("content" to text),
-                            ),
-                        ),
-                    )
-                    if (children.isNotEmpty()) {
-                        put("children", children)
-                    }
-                },
-        )
-
-    private fun createToggleBlock(
-        text: String,
-        children: List<Map<String, Any>> = emptyList(),
-    ): Map<String, Any> =
-        mapOf(
-            "object" to "block",
-            "type" to "toggle",
-            "toggle" to
-                buildMap<String, Any> {
-                    put(
-                        "rich_text",
-                        listOf(
-                            mapOf(
-                                "type" to "text",
-                                "text" to mapOf("content" to text),
-                            ),
-                        ),
-                    )
-                    if (children.isNotEmpty()) {
-                        put("children", children)
-                    }
-                },
-        )
-
-    private fun createParagraphBlock(text: String): Map<String, Any> =
-        mapOf(
-            "object" to "block",
-            "type" to "paragraph",
-            "paragraph" to
-                mapOf(
-                    "rich_text" to
-                        listOf(
-                            mapOf(
-                                "type" to "text",
-                                "text" to mapOf("content" to text),
-                            ),
-                        ),
-                ),
-        )
 }
 
 data class TimetableThinkingAppendResult(
