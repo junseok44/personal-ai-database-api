@@ -28,17 +28,18 @@ internal object DoneTodosReminderFormatter {
         if (miscTitles.isNotEmpty() && scored.isNotEmpty()) {
             parts.add(RichTextPart("\n\n"))
         }
-        for (i in scored.indices) {
-            val s = scored[i]
+        val sortedScored = scored.sortedByDescending { it.score }
+        for (i in sortedScored.indices) {
+            val s = sortedScored[i]
             val line = "• ${s.title} (${formatScore(s.score)}/5)"
             val color =
                 when {
-                    s.score < 3.0 -> "red"
+                    s.score < 2.5 -> "red"
                     s.score >= 4.0 -> "blue"
                     else -> "default"
                 }
             parts.add(RichTextPart(line, color))
-            if (i < scored.lastIndex) {
+            if (i < sortedScored.lastIndex) {
                 parts.add(RichTextPart("\n"))
             }
         }
