@@ -7,6 +7,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.OneToMany
 import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
+import jakarta.persistence.Index
 import java.time.Instant
 import java.time.LocalDate
 
@@ -14,7 +15,7 @@ import java.time.LocalDate
 // 그거 각각 별로 food 엔티티와 다대다 관계이다.
 
 @Entity
-@Table(name = "nutrition")
+@Table(name = "nutrition", indexes = [Index(name = "idx_nutrition_record_date", columnList = "record_date", unique = true)])
 class NutritionEntity(
     id: Long? = null,
     notionPageId: String,

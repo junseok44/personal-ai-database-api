@@ -7,12 +7,15 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.Lob
 import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
+import jakarta.persistence.Index
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 
 @Entity
-@Table(name = "timetable")
+@Table(name = "timetable", indexes = [
+    Index(name = "idx_timetable_record_date", columnList = "record_date", unique = true),
+])
 class TimetableEntity(
     id: Long? = null,
     notionPageId: String,

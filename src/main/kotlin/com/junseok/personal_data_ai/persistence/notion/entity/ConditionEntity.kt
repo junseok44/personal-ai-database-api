@@ -6,12 +6,13 @@ import jakarta.persistence.FetchType
 import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
 import jakarta.persistence.Lob
+import jakarta.persistence.Index
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 
 @Entity
-@Table(name = "condition")
+@Table(name = "condition", indexes = [Index(name = "idx_condition_record_date", columnList = "record_date", unique = true)])
 class ConditionEntity(
     id: Long? = null,
     notionPageId: String,
@@ -48,6 +49,4 @@ class ConditionEntity(
     title = title,
     recordDate = recordDate,
 ) {
-    @OneToOne(mappedBy = "condition", fetch = FetchType.LAZY)
-    var timetable: TimetableEntity? = null
 }
