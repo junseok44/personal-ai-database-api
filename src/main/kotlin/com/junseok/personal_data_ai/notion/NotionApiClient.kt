@@ -3,11 +3,28 @@ package com.junseok.personal_data_ai.notion
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
+import java.time.LocalDate
 
 @Component
 class NotionApiClient(
     private val notionRestClient: RestClient,
 ) {
+    fun fetchPage(pageId: String): NotionPageResponse {
+        return notionRestClient
+            .get()
+            ?.uri("/pages/{pageId}", pageId)
+            ?.retrieve()
+            ?.body(NotionPageResponse::class.java)
+            ?: throw IllegalStateException("Notion page fetch failed: empty response")
+    }
+
+    fun fetchPageWithContent(pageId: String): NotionPageWithContent {
+        return NotionPageWithContent(
+            page = fetchPage(pageId),
+            blocks = fetchAllBlocksRecursively(pageId),
+        )
+    }
+
     fun queryDatabaseByTitleEquals(
         databaseId: String,
         titleProperty: String,
@@ -19,6 +36,31 @@ class NotionApiClient(
                     mapOf(
                         "property" to titleProperty,
                         "title" to mapOf("equals" to titleEquals),
+                    ),
+                "page_size" to 1,
+            )
+        val response =
+            notionRestClient
+                .post()
+                .uri("/databases/{databaseId}/query", databaseId)
+                .body(requestBody)
+                .retrieve()
+                .body(NotionQueryResponse::class.java)
+                ?: return null
+        return response.results.firstOrNull()?.id?.takeIf { it.isNotBlank() }
+    }
+
+    fun queryDatabaseByDateEquals(
+        databaseId: String,
+        dateProperty: String,
+        date: LocalDate,
+    ): String? {
+        val requestBody =
+            mapOf(
+                "filter" to
+                    mapOf(
+                        "property" to dateProperty,
+                        "date" to mapOf("equals" to date.toString()),
                     ),
                 "page_size" to 1,
             )
@@ -140,6 +182,17 @@ class NotionApiClient(
         } while (nextCursor != null)
         return all
     }
+
+    fun fetchAllBlocksRecursively(blockId: String): List<NotionBlock> {
+        val directChildren = fetchAllBlockChildren(blockId)
+        return directChildren.flatMap { block ->
+            if (block.has_children) {
+                listOf(block) + fetchAllBlocksRecursively(block.id)
+            } else {
+                listOf(block)
+            }
+        }
+    }
 }
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -148,8 +201,16 @@ private data class NotionQueryResponse(
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-private data class NotionPageResponse(
+data class NotionPageResponse(
     val id: String = "",
+    val created_time: String? = null,
+    val last_edited_time: String? = null,
+    val properties: Map<String, Any?> = emptyMap(),
+)
+
+data class NotionPageWithContent(
+    val page: NotionPageResponse,
+    val blocks: List<NotionBlock>,
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -158,10 +219,20 @@ data class NotionBlock(
     val type: String = "",
     val has_children: Boolean = false,
     val bulleted_list_item: NotionBulletedListItem? = null,
+    val paragraph: NotionRichTextContainer? = null,
+    val heading_1: NotionRichTextContainer? = null,
+    val heading_2: NotionRichTextContainer? = null,
+    val heading_3: NotionRichTextContainer? = null,
+    val toggle: NotionRichTextContainer? = null,
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class NotionBulletedListItem(
+    val rich_text: List<NotionRichText> = emptyList(),
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class NotionRichTextContainer(
     val rich_text: List<NotionRichText> = emptyList(),
 )
 

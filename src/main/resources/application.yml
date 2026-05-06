@@ -1,6 +1,18 @@
 spring:
   application:
     name: personal-data-ai
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:personal_data_ai;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
 
 auth:
   api-key: ${AUTH_API_KEY}
