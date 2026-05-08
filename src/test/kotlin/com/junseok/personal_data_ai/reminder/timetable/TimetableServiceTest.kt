@@ -1,19 +1,21 @@
 package com.junseok.personal_data_ai.reminder.timetable
 
 import com.junseok.personal_data_ai.config.ReminderProperties
+import com.junseok.personal_data_ai.config.SlackProperties
 import com.junseok.personal_data_ai.llm.AiGenerateService
 import com.junseok.personal_data_ai.notion.NotionPagePropertyContent
 import com.junseok.personal_data_ai.notion.TimetableNotionService
 import com.junseok.personal_data_ai.notion.TimetableThinkingAppendResult
 import com.junseok.personal_data_ai.notion.TimetableThinkingGroup
+import com.junseok.personal_data_ai.slack.SlackApiClient
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito
+import org.mockito.Mockito.timeout
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
-import org.springframework.core.task.SyncTaskExecutor
 
 class TimetableServiceTest {
     private val timetableNotionService: TimetableNotionService = Mockito.mock(TimetableNotionService::class.java)
@@ -118,12 +120,12 @@ class TimetableServiceTest {
     @Test
     fun `TimetableThinkingAiFeedbackService는 각 그룹 피드백을 생성해 대응 블록에 붙인다`() {
         val aiGenerateService: AiGenerateService = Mockito.mock(AiGenerateService::class.java)
-        val notionService: TimetableNotionService = Mockito.mock(TimetableNotionService::class.java)
+        val slackApiClient: SlackApiClient = Mockito.mock(SlackApiClient::class.java)
         val service =
             TimetableThinkingAiFeedbackService(
                 aiGenerateService = aiGenerateService,
-                timetableNotionService = notionService,
-                taskExecutor = SyncTaskExecutor(),
+                slackApiClient = slackApiClient,
+                slackProperties = SlackProperties(botToken = "token", timetableFeedbackChannelId = "channel-1"),
             )
         Mockito.`when`(aiGenerateService.generateText(Mockito.anyString(), Mockito.isNull()))
             .thenReturn("피드백 1", "피드백 2")
@@ -137,8 +139,7 @@ class TimetableServiceTest {
             blockIds = listOf("block-1", "block-2"),
         )
 
-        verify(aiGenerateService, times(2)).generateText(Mockito.anyString(), Mockito.isNull())
-        verify(notionService).appendAiFeedbackToThinkingBlock("block-1", "피드백 1")
-        verify(notionService).appendAiFeedbackToThinkingBlock("block-2", "피드백 2")
+        verify(aiGenerateService, timeout(1000).times(2)).generateText(Mockito.anyString(), Mockito.isNull())
+        verify(slackApiClient, timeout(1000).times(2)).postMessage(Mockito.eq("channel-1"), Mockito.anyString())
     }
 }
