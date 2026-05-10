@@ -15,6 +15,7 @@ data class NotionProperties(
     val conditionDatabaseId: String,
     val nutritionDatabaseId: String,
     val foodDatabaseId: String,
+    val weatherPageId: String = "",
     val version: String = "2022-06-28",
     val titleProperty: String = "Name",
     /** 일일 페이지 제목(MMdd) 기준 날짜를 잡을 때 사용 (예: Asia/Seoul). JVM 기본 타임존과 무관하게 고정 가능. */
