@@ -25,6 +25,7 @@ notion:
   condition-database-id: ${NOTION_CONDITION_DATABASE_ID}
   nutrition-database-id: ${NOTION_NUTRITION_DATABASE_ID}
   food-database-id: ${NOTION_FOOD_DATABASE_ID}
+  weather-page-id: ${NOTION_WEATHER_PAGE_ID:}
   version: ${NOTION_VERSION:2022-06-28}
   title-property: ${NOTION_TITLE_PROPERTY:Name}
   date-property: ${NOTION_DATE_PROPERTY:날짜}
